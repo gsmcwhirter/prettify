@@ -3,6 +3,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo v0.0
 GIT_SHA := $(shell git rev-parse HEAD)
 APP_NAME := prettify
 PROJECT := github.com/gsmcwhirter/$(APP_NAME)
+SERVER := evogames.org:~/bin/
 
 # can specify V=1 on the line with `make` to get verbose output
 V ?= 0
@@ -32,10 +33,13 @@ release: vet generate test build-release-bundles  ## Release build: create a rel
 release-upload: release upload-release-bundles  ## Release build+upload: create a release build and distribute release files to s3
 
 generate:
-	$Q go generate ../../...
+	$Q go generate ./...
 
 test:  ## Run the tests
-	# $Q go test -cover ./pkg/...
+	$Q go test -cover ./...
+
+upload:
+	$Q scp  ./bin/$(APP_NAME).gz ./bin/$(APP_NAME)-$(VERSION).gz $(SERVER)
 
 version:  ## Print the version string and git sha that would be recorded if a release was built now
 	$Q echo $(VERSION)

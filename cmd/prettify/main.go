@@ -3,10 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime/trace"
-	"strings"
-
-	"github.com/gsmcwhirter/go-util/deferutil"
 )
 
 // Build-time variables
@@ -30,22 +26,6 @@ func main() {
 func run() (int, error) {
 	code := 0
 
-	// Initiate a runtime trace
-	tracePath := getTracePath()
-	if tracePath != "" {
-		tf, err := os.Create(tracePath)
-		if err != nil {
-			return -1, err
-		}
-		defer deferutil.CheckDefer(tf.Close)
-
-		err = trace.Start(tf)
-		if err != nil {
-			return -1, err
-		}
-		defer trace.Stop()
-	}
-
 	a := app{}
 	cli := a.setup()
 
@@ -55,17 +35,4 @@ func run() (int, error) {
 	}
 
 	return code, nil
-}
-
-func getTracePath() string {
-	// Hidden option to produce a trace of the runtime
-	if val, ok := os.LookupEnv(fmt.Sprintf("%s_TRACE", strings.ToUpper(AppName))); ok && val != "" {
-		if val == "." {
-			return fmt.Sprintf("%s.trace", AppName)
-		}
-
-		return val
-	}
-
-	return ""
 }

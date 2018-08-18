@@ -23,18 +23,7 @@ var levelColors = map[string]func(string, ...interface{}) string{
 }
 
 var autoFields = map[string]bool{
-	"@tag":            true,
-	"PID":             false, // yes, false -- we usually want this
-	"event_timestamp": true,
-	"file_name":       true,
-	"function_name":   true,
-	"line_number":     true,
-	"log_level":       true,
-	"main_name":       true,
-	"script_exec_id":  true,
-	"script_exec_nth": true,
-	"source_host":     true,
-	"time_iso":        true,
+	"caller": true,
 }
 
 type app struct {
@@ -70,8 +59,8 @@ func (a *app) setup() *cli.Command {
 
 	c.SetRunFunc(a.run)
 	c.Flags().StringSliceVarP(&a.messageFields, "message-field", "m", []string{"message", "msg"}, "The name of a field that contains the 'message'")
-	c.Flags().StringVarP(&a.timestampField, "timestamp-field", "t", "@timestamp", "The name of the timestamp field")
-	c.Flags().StringVarP(&a.levelField, "level-field", "l", "log_level_string", "The name of the field containing the log level")
+	c.Flags().StringVarP(&a.timestampField, "timestamp-field", "t", "timestamp", "The name of the timestamp field")
+	c.Flags().StringVarP(&a.levelField, "level-field", "l", "level", "The name of the field containing the log level")
 	c.Flags().StringArrayVarP(&a.filters, "filter", "F", []string{}, "A filter expression (lines not matching will not be displayed -- repeatable)")
 	c.Flags().StringSliceVarP(&a.output, "output", "O", nil, "A list of fields to show (all when not present)")
 	c.Flags().StringSliceVarP(&a.exclude, "exclude", "E", nil, "A list of fields to exclude (none when not present; takes priority over everything else)")
@@ -147,7 +136,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 		ts = color.BlueString(ts)
 
 		if lineMap[a.levelField].Exists() {
-			level = lineMap[a.levelField].String()
+			level = strings.ToUpper(lineMap[a.levelField].String())
 		} else {
 			level = "NONE"
 		}
