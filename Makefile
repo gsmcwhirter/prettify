@@ -35,7 +35,7 @@ deps:  ## download dependencies
 
 release: vet generate test build-release-bundles  ## Release build: create a release build (disable race detection, strip symbols)
 
-release-upload: release upload-release-bundles  ## Release build+upload: create a release build and distribute release files to s3
+release-upload: release upload  ## Release build+upload: create a release build and distribute release files to s3
 
 generate:  ## run a go generate
 	$Q GOPROXY=$(GOPROXY) go generate ./...
