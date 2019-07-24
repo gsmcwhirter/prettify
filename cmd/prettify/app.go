@@ -8,10 +8,8 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/gsmcwhirter/go-util/cli"
+	"github.com/gsmcwhirter/go-util/v5/cli"
 	"github.com/tidwall/gjson"
-
-	"github.com/gsmcwhirter/prettify/pkg/filter"
 )
 
 var levelColors = map[string]func(string, ...interface{}) string{
@@ -28,10 +26,9 @@ var autoFields = map[string]bool{
 
 type app struct {
 	cli            *cli.Command
-	messageFields  []string
+	messageField   string
 	timestampField string
 	levelField     string
-	filters        []string
 	output         []string
 	exclude        []string
 	forceColor     bool
@@ -58,10 +55,9 @@ func (a *app) setup() *cli.Command {
 	)
 
 	c.SetRunFunc(a.run)
-	c.Flags().StringSliceVarP(&a.messageFields, "message-field", "m", []string{"message", "msg"}, "The name of a field that contains the 'message'")
+	c.Flags().StringVarP(&a.messageField, "message-field", "m", "message", "The name of a field that contains the 'message'")
 	c.Flags().StringVarP(&a.timestampField, "timestamp-field", "t", "timestamp", "The name of the timestamp field")
 	c.Flags().StringVarP(&a.levelField, "level-field", "l", "level", "The name of the field containing the log level")
-	c.Flags().StringArrayVarP(&a.filters, "filter", "F", []string{}, "A filter expression (lines not matching will not be displayed -- repeatable)")
 	c.Flags().StringSliceVarP(&a.output, "output", "O", nil, "A list of fields to show (all when not present)")
 	c.Flags().StringSliceVarP(&a.exclude, "exclude", "E", nil, "A list of fields to exclude (none when not present; takes priority over everything else)")
 	c.Flags().BoolVarP(&a.forceColor, "color", "C", false, "Force color output (for less and similar pipes)")
@@ -77,8 +73,6 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 		color.NoColor = false
 	}
 
-	lf := filter.NewLineFilter(a.filters)
-
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var line string
@@ -91,11 +85,9 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 	var lineMap map[string]gjson.Result
 
 	specialFields := map[string]bool{
+		a.messageField:   true,
 		a.timestampField: true,
 		a.levelField:     true,
-	}
-	for _, mField := range a.messageFields {
-		specialFields[mField] = true
 	}
 
 	outputFields := map[string]bool{}
@@ -110,10 +102,6 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 
 	for scanner.Scan() {
 		line = strings.TrimSpace(scanner.Text())
-
-		if !lf.Allow(line) {
-			continue
-		}
 
 		lineKeys = make([]string, 0, len(lineKeys))
 		lineMap = map[string]gjson.Result{}
@@ -149,13 +137,8 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 		message = ""
 		if !strings.HasPrefix(line, "{") {
 			message = line
-		} else {
-			for _, k := range a.messageFields {
-				if lineMap[k].Exists() {
-					message = lineMap[k].String()
-					break
-				}
-			}
+		} else if lineMap[a.messageField].Exists() {
+			message = lineMap[a.messageField].String()
 		}
 
 		fmt.Printf("%s |%s| %s", ts, level, message)

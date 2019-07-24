@@ -5,6 +5,8 @@ APP_NAME := prettify
 PROJECT := github.com/gsmcwhirter/$(APP_NAME)
 SERVER := evogames.org:~/bin/
 
+GOPROXY ?= https://proxy.golang.org
+
 # can specify V=1 on the line with `make` to get verbose output
 V ?= 0
 Q = $(if $(filter 1,$V),,@)
@@ -28,15 +30,18 @@ clean:  ## Remove compiled artifacts
 
 debug: vet generate build-debug  ## Debug build: create a dev build (enable race detection, don't strip symbols)
 
+deps:  ## download dependencies
+	$Q GOPROXY=$(GOPROXY) go mod download
+
 release: vet generate test build-release-bundles  ## Release build: create a release build (disable race detection, strip symbols)
 
 release-upload: release upload-release-bundles  ## Release build+upload: create a release build and distribute release files to s3
 
-generate:
-	$Q go generate ./...
+generate:  ## run a go generate
+	$Q GOPROXY=$(GOPROXY) go generate ./...
 
-test:  ## Run the tests
-	$Q go test -cover ./...
+test:  ## run go test
+	$Q GOPROXY=$(GOPROXY) go test -cover ./...
 
 upload:
 	$Q scp  ./bin/$(APP_NAME).gz ./bin/$(APP_NAME)-$(VERSION).gz $(SERVER)
@@ -45,10 +50,11 @@ version:  ## Print the version string and git sha that would be recorded if a re
 	$Q echo $(VERSION)
 	$Q echo $(GIT_SHA)
 
-vet:  ## Run the linter
-	$Q golint ./...
-	$Q go vet ./...
-	$Q gometalinter -D gas -D gocyclo -D goconst -e .pb.go -e _easyjson.go --warn-unmatched-nolint --enable-gc --deadline 180s ./...
+vet: deps generate ## run various linters and vetters
+	$Q bash -c 'for d in $$(go list -f {{.Dir}} ./...); do gofmt -s -w $$d/*.go; done'
+	$Q bash -c 'for d in $$(go list -f {{.Dir}} ./...); do goimports -w -local $(PROJECT) $$d/*.go; done'
+	$Q golangci-lint run -E golint,gosimple,staticcheck ./...
+	$Q golangci-lint run -E deadcode,depguard,errcheck,gocritic,gofmt,goimports,gosec,govet,ineffassign,nakedret,prealloc,structcheck,typecheck,unconvert,varcheck ./...
 
 help:  ## Show the help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' ./Makefile
