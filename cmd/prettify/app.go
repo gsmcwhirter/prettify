@@ -50,7 +50,6 @@ func (a *app) setup() *cli.Command {
 	c.AddExamples(
 		"Just seeing logs", fmt.Sprintf("my-cmd 2>&1 | %[1]s", AppName),
 		"Saving raw logs and seeing nice versions", fmt.Sprintf("my-cmd 2>&1 | tee -a real_data.log | %[1]s", AppName),
-		"Filtering logs", fmt.Sprintf("my-cmd | %[1]s -F 'log_level > 20'", AppName),
 		"Only seeing some fields (just message in this case)", fmt.Sprintf("my-cmd | %[1]s -O 'message'", AppName),
 	)
 
