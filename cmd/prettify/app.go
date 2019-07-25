@@ -107,8 +107,13 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 
 		obj = gjson.Parse(line)
 		obj.ForEach(func(key, value gjson.Result) bool {
-			lineKeys = append(lineKeys, key.String())
-			lineMap[key.String()] = value
+			kStr := key.String()
+			if kStr == "" {
+				return true
+			}
+
+			lineKeys = append(lineKeys, kStr)
+			lineMap[kStr] = value
 			return true // keep iterating
 		})
 
