@@ -18,10 +18,13 @@ all: debug  ## Download dependencies and do a debug build
 build-debug: version
 	$Q go build -v -ldflags "-X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) -race $(PROJECT)/cmd/$(APP_NAME)
 
-build-release: version
+build-release-osx: version
+	$Q go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) $(PROJECT)/cmd/$(APP_NAME)
+
+build-release-linux: version
 	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) $(PROJECT)/cmd/$(APP_NAME)
 
-build-release-bundles: build-release
+build-release-bundles: build-release-linux
 	$Q gzip -k -f bin/$(APP_NAME)
 	$Q cp bin/$(APP_NAME).gz bin/$(APP_NAME)-$(VERSION).gz
 
