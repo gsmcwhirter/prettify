@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/gsmcwhirter/go-util/v5/cli"
+	"github.com/gsmcwhirter/go-util/v7/cli"
 	"github.com/tidwall/gjson"
 )
 
