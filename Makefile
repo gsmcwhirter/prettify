@@ -3,7 +3,6 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo v0.0
 GIT_SHA := $(shell git rev-parse HEAD)
 APP_NAME := prettify
 PROJECT := github.com/gsmcwhirter/$(APP_NAME)
-SERVER := evogames.org:~/bin/
 
 GOPROXY ?= https://proxy.golang.org
 
@@ -19,17 +18,18 @@ build-debug: version
 	$Q go build -v -ldflags "-X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) -race $(PROJECT)/cmd/$(APP_NAME)
 
 build-release-osx: version
-	$Q go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) $(PROJECT)/cmd/$(APP_NAME)
+	$Q go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME)-osx $(PROJECT)/cmd/$(APP_NAME)
 
 build-release-linux: version
-	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) $(PROJECT)/cmd/$(APP_NAME)
+	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME)-linux $(PROJECT)/cmd/$(APP_NAME)
 
 build-release-bundles: build-release-linux
+	$Q cp bin/$(APP_NAME)-linux bin/$(APP_NAME)
 	$Q gzip -k -f bin/$(APP_NAME)
 	$Q cp bin/$(APP_NAME).gz bin/$(APP_NAME)-$(VERSION).gz
 
 clean:  ## Remove compiled artifacts
-	$Q rm bin/*
+	$Q rm bin/*.gz
 
 debug: vet generate build-debug  ## Debug build: create a dev build (enable race detection, don't strip symbols)
 
@@ -45,9 +45,6 @@ generate:  ## run a go generate
 
 test:  ## run go test
 	$Q GOPROXY=$(GOPROXY) go test -cover ./...
-
-upload:
-	$Q scp  ./bin/$(APP_NAME).gz ./bin/$(APP_NAME)-$(VERSION).gz $(SERVER)
 
 version:  ## Print the version string and git sha that would be recorded if a release was built now
 	$Q echo $(VERSION)
