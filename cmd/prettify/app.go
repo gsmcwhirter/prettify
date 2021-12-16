@@ -29,10 +29,13 @@ type app struct {
 	messageField   string
 	timestampField string
 	levelField     string
+	stackField     string
 	output         []string
 	exclude        []string
 	forceColor     bool
 	autoFields     bool
+	allStacks      bool
+	skipStacks     bool
 }
 
 func (a *app) setup() *cli.Command {
@@ -57,10 +60,13 @@ func (a *app) setup() *cli.Command {
 	c.Flags().StringVarP(&a.messageField, "message-field", "m", "message", "The name of a field that contains the 'message'")
 	c.Flags().StringVarP(&a.timestampField, "timestamp-field", "t", "timestamp", "The name of the timestamp field")
 	c.Flags().StringVarP(&a.levelField, "level-field", "l", "level", "The name of the field containing the log level")
+	c.Flags().StringVarP(&a.stackField, "stack-field", "k", "stack", "The name of the field containing the stack trace")
 	c.Flags().StringSliceVarP(&a.output, "output", "O", nil, "A list of fields to show (all when not present)")
 	c.Flags().StringSliceVarP(&a.exclude, "exclude", "E", nil, "A list of fields to exclude (none when not present; takes priority over everything else)")
 	c.Flags().BoolVarP(&a.forceColor, "color", "C", false, "Force color output (for less and similar pipes)")
 	c.Flags().BoolVarP(&a.autoFields, "auto-fields", "A", false, "Include auto-generated tags from log lines (without, can still explicitly specify in -O)")
+	c.Flags().BoolVarP(&a.allStacks, "all-stacks", "s", false, "Include printing a stack trace for non-error lines where it is included")
+	c.Flags().BoolVarP(&a.skipStacks, "no-stacks", "S", false, "Skip printing a stack trace for lines where it is included")
 
 	a.cli = c
 
@@ -77,7 +83,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 	var line string
 	var obj gjson.Result
 	var ts string
-	var level string
+	var level, levelText string
 	var message string
 
 	var lineKeys []string
@@ -87,6 +93,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 		a.messageField:   true,
 		a.timestampField: true,
 		a.levelField:     true,
+		a.stackField:     true,
 	}
 
 	outputFields := map[string]bool{}
@@ -133,9 +140,9 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 			level = "NONE"
 		}
 
-		level = level[:4]
-		if levelColor, ok := levelColors[level]; ok {
-			level = levelColor("%s", level)
+		levelText = level[:4]
+		if levelColor, ok := levelColors[levelText]; ok {
+			levelText = levelColor("%s", levelText)
 		}
 
 		message = ""
@@ -145,7 +152,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 			message = lineMap[a.messageField].String()
 		}
 
-		fmt.Printf("%s |%s| %s", ts, level, message)
+		fmt.Printf("%s |%s| %s", ts, levelText, message)
 
 		for _, key := range lineKeys {
 			if _, ok := specialFields[key]; ok {
@@ -165,6 +172,17 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 			}
 
 			fmt.Printf(" %s=%s", color.CyanString(key), lineMap[key].String())
+		}
+
+		if lineMap[a.stackField].Exists() && !a.skipStacks && (a.allStacks || level == "ERROR") {
+			rawLines := lineMap[a.stackField].Array()
+			lines := make([]string, 0, len(rawLines))
+
+			for _, l := range rawLines {
+				lines = append(lines, l.String())
+			}
+
+			fmt.Printf(" %s=\n\t%s", color.CyanString(a.stackField), strings.Join(lines, "\n\t"))
 		}
 
 		fmt.Println()
