@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/gsmcwhirter/go-util/v7/cli"
+	"github.com/gsmcwhirter/go-util/v9/cli"
 	"github.com/tidwall/gjson"
 )
 
@@ -114,13 +114,13 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 
 		obj = gjson.Parse(line)
 		obj.ForEach(func(key, value gjson.Result) bool {
-			kStr := key.String()
-			if kStr == "" {
+			k := key.String()
+			if k == "" {
 				return true
 			}
 
-			lineKeys = append(lineKeys, kStr)
-			lineMap[kStr] = value
+			lineKeys = append(lineKeys, k)
+			lineMap[k] = value
 			return true // keep iterating
 		})
 

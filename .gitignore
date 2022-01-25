@@ -1,3 +1,4 @@
 *.trace
 bin/*.gz
 bin/prettify
+bin/logfollow

@@ -15,30 +15,21 @@ Q = $(if $(filter 1,$V),,@)
 all: debug  ## Download dependencies and do a debug build
 
 build-debug: version
-	$Q go build -v -ldflags "-X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME) -race $(PROJECT)/cmd/$(APP_NAME)
+	$Q go build -v -ldflags "-X main.AppName=prettify -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/prettify -race $(PROJECT)/cmd/prettify
+	$Q go build -v -ldflags "-X main.AppName=logfollow -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/logfollow -race $(PROJECT)/cmd/logfollow
 
 build-release-osx: version
-	$Q go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME)-osx $(PROJECT)/cmd/$(APP_NAME)
+	$Q go build -v -ldflags "-s -w -X main.AppName=prettify -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/prettify-osx $(PROJECT)/cmd/prettify
+	$Q go build -v -ldflags "-s -w -X main.AppName=logfollow -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/logfollow-osx $(PROJECT)/cmd/logfollow
 
 build-release-linux: version
-	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=$(APP_NAME) -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/$(APP_NAME)-linux $(PROJECT)/cmd/$(APP_NAME)
-
-build-release-bundles: build-release-linux
-	$Q cp bin/$(APP_NAME)-linux bin/$(APP_NAME)
-	$Q gzip -k -f bin/$(APP_NAME)
-	$Q cp bin/$(APP_NAME).gz bin/$(APP_NAME)-$(VERSION).gz
-
-clean:  ## Remove compiled artifacts
-	$Q rm bin/*.gz
+	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=prettify -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/prettify-linux $(PROJECT)/cmd/prettify
+	$Q GOOS=linux go build -v -ldflags "-s -w -X main.AppName=logfollow -X main.BuildVersion=$(VERSION) -X main.BuildSHA=$(GIT_SHA) -X main.BuildDate=$(BUILD_DATE)" -o bin/logfollow-linux $(PROJECT)/cmd/logfollow
 
 debug: vet generate build-debug  ## Debug build: create a dev build (enable race detection, don't strip symbols)
 
 deps:  ## download dependencies
 	$Q GOPROXY=$(GOPROXY) go mod download
-
-release: vet generate test build-release-bundles  ## Release build: create a release build (disable race detection, strip symbols)
-
-release-upload: release upload  ## Release build+upload: create a release build and distribute release files to s3
 
 generate:  ## run a go generate
 	$Q GOPROXY=$(GOPROXY) go generate ./...
@@ -53,7 +44,7 @@ version:  ## Print the version string and git sha that would be recorded if a re
 vet: deps generate ## run various linters and vetters
 	$Q bash -c 'for d in $$(go list -f {{.Dir}} ./...); do gofmt -s -w $$d/*.go; done'
 	$Q bash -c 'for d in $$(go list -f {{.Dir}} ./...); do goimports -w -local $(PROJECT) $$d/*.go; done'
-	$Q golangci-lint run -E golint,gosimple,staticcheck ./...
+	$Q golangci-lint run -E revive,gosimple,staticcheck ./...
 	$Q golangci-lint run -E deadcode,depguard,errcheck,gocritic,gofmt,goimports,gosec,govet,ineffassign,nakedret,prealloc,structcheck,typecheck,unconvert,varcheck ./...
 
 help:  ## Show the help message

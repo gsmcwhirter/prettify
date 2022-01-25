@@ -1,0 +1,4 @@
+{"@tag": "test1"}
+not json
+{"no_tag_here": true}
+{"@tag": "test2"}
