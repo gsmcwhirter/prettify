@@ -25,17 +25,19 @@ var autoFields = map[string]bool{
 }
 
 type app struct {
-	cli            *cli.Command
-	messageField   string
-	timestampField string
-	levelField     string
-	stackField     string
-	output         []string
-	exclude        []string
-	forceColor     bool
-	autoFields     bool
-	allStacks      bool
-	skipStacks     bool
+	cli             *cli.Command
+	messageField    string
+	timestampField  string
+	levelField      string
+	stackField      string
+	output          []string
+	exclude         []string
+	forceColor      bool
+	autoFields      bool
+	allStacks       bool
+	skipStacks      bool
+	multilineTags   bool
+	multilineFields []string
 }
 
 func (a *app) setup() *cli.Command {
@@ -63,10 +65,12 @@ func (a *app) setup() *cli.Command {
 	c.Flags().StringVarP(&a.stackField, "stack-field", "k", "stack", "The name of the field containing the stack trace")
 	c.Flags().StringSliceVarP(&a.output, "output", "O", nil, "A list of fields to show (all when not present)")
 	c.Flags().StringSliceVarP(&a.exclude, "exclude", "E", nil, "A list of fields to exclude (none when not present; takes priority over everything else)")
+	c.Flags().StringSliceVarP(&a.multilineFields, "multiline-fields", "L", nil, "A list of fields with multiline content to be specially formatted")
 	c.Flags().BoolVarP(&a.forceColor, "color", "C", false, "Force color output (for less and similar pipes)")
 	c.Flags().BoolVarP(&a.autoFields, "auto-fields", "A", false, "Include auto-generated tags from log lines (without, can still explicitly specify in -O)")
 	c.Flags().BoolVarP(&a.allStacks, "all-stacks", "s", false, "Include printing a stack trace for non-error lines where it is included")
 	c.Flags().BoolVarP(&a.skipStacks, "no-stacks", "S", false, "Skip printing a stack trace for lines where it is included")
+	c.Flags().BoolVarP(&a.multilineTags, "multiline-tags", "M", false, "Format tags each on their own line")
 
 	a.cli = c
 
@@ -96,6 +100,10 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 		a.stackField:     true,
 	}
 
+	for _, f := range a.multilineFields {
+		specialFields[f] = true
+	}
+
 	outputFields := map[string]bool{}
 	for _, oField := range a.output {
 		outputFields[oField] = true
@@ -104,6 +112,13 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 	excludeFields := map[string]bool{}
 	for _, eField := range a.exclude {
 		excludeFields[eField] = true
+	}
+
+	fill := " "
+	multilineFill := "\n\t"
+	if a.multilineTags {
+		fill = "\n\t"
+		multilineFill = "\n\t\t"
 	}
 
 	for scanner.Scan() {
@@ -132,7 +147,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 			ts = ""
 		}
 
-		ts = color.BlueString(ts)
+		ts = color.HiBlackString(ts)
 
 		if lineMap[a.levelField].Exists() {
 			level = strings.ToUpper(lineMap[a.levelField].String())
@@ -171,7 +186,18 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 				continue
 			}
 
-			fmt.Printf(" %s=%s", color.CyanString(key), lineMap[key].String())
+			fmt.Printf("%s%s=%s", fill, color.CyanString(key), lineMap[key].String())
+		}
+
+		for _, mlf := range a.multilineFields {
+			if !lineMap[mlf].Exists() {
+				continue
+			}
+
+			fld := lineMap[mlf].String()
+			lines := strings.Split(strings.TrimSpace(fld), "\n")
+
+			fmt.Printf("%s%s=%s%s", "\n\t", color.CyanString(mlf), multilineFill, strings.Join(lines, multilineFill))
 		}
 
 		if lineMap[a.stackField].Exists() && !a.skipStacks && (a.allStacks || level == "ERROR") {
@@ -182,7 +208,7 @@ func (a *app) run(cmd *cli.Command, args []string) error {
 				lines = append(lines, l.String())
 			}
 
-			fmt.Printf(" %s=\n\t%s", color.CyanString(a.stackField), strings.Join(lines, "\n\t"))
+			fmt.Printf("%s%s=%s%s", "\n\t", color.CyanString(a.stackField), multilineFill, strings.Join(lines, multilineFill))
 		}
 
 		fmt.Println()
